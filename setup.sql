@@ -1,21 +1,16 @@
-drop table if exists MuscleExerciseMap;
-drop table if exists MuscleGroupMap;
-drop table if exists ExerciseSets;
-drop table if exists Muscles;
-drop table if exists MuscleGroups;
-drop table if exists Exercises;
-drop table if exists Workouts;
-drop table if exists Units;
-
-
 create table if not exists Exercises (
     id integer primary key,
     Name text not null,
     WeightPerSideInd integer not null default 0,
     BodyWeightInd integer not null default 0,
     WeightAssistedInd integer not null default 0,
-    UnitId integer not null,
-    constraint Exercises_FK foreign key (UnitId) references Units (id)
+    ValueTypeId integer not null,
+    constraint Exercises_FK foreign key (ValueTypeId) references ValueType (id)
+);
+
+create table if not exists ValueType (
+    id integer primary key,
+    Name text not null
 );
 
 create table if not exists Units (
@@ -61,5 +56,20 @@ create table if not exists ExerciseSets (
     WorkoutId integer not null,
     Reps integer not null,
     Weight integer default 0,
-    constraint Sets_FK foreign key (WorkoutId) references MuscleGroups
-)
+    UnitId integer not null,
+    constraint Sets_FK foreign key (WorkoutId) references Workouts (id),
+    constraint ExerciseSets_FK foreign key (UnitId) references Units (id)
+);
+
+create table if not exists MeasurementNames (
+    id integer primary key,
+    Name text not null
+);
+
+create table if not exists Measurements (
+    id integer primary key,
+    Date text not null,
+    MeasurementId not null,
+    Value not null,
+    constraint Measurements_FK foreign key (MeasurementId) references MeasurementNames (id)
+);
