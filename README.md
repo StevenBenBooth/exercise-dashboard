@@ -1,0 +1,2 @@
+This is one component of a bigger scheme of mine to collect a bunch of information about my life. I think it would be fun to eventually boil this down into a stat sheet for my website. Or, depending on what I collect, it might help me make more informed decisions about my life.
+At any rate, this is a first effort to make a quick database, populate it with data, and produce some metrics I can track for workout progress.
