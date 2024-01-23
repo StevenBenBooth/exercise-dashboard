@@ -50,18 +50,21 @@ create table if not exists MuscleExerciseMap (
     primary key (ExerciseId, MuscleId)
 );
 
--- Adding multiple sets will just be done by the tracker
+-- Multiple sets will just be multiple rows in db
 create table if not exists ExerciseSets (
     id integer primary key,
     WorkoutId integer not null,
+    ExerciseId integer not null,
     Reps integer not null,
     Weight integer default 0,
     UnitId integer not null,
-    constraint Sets_FK foreign key (WorkoutId) references Workouts (id),
-    constraint ExerciseSets_FK foreign key (UnitId) references Units (id)
+    constraint ExerciseSets_FK01 foreign key (WorkoutId) references Workouts (id),
+    constraint ExerciseSets_FK02 foreign key (ExerciseId) references Exercises (id),
+    constraint ExerciseSets_FK03 foreign key (UnitId) references Units (id)
 );
 
-create table if not exists MeasurementNames (
+-- this will be helpful for later if I choose to track other non-strength metrics
+create table if not exists Metrics (
     id integer primary key,
     Name text not null
 );
@@ -69,7 +72,7 @@ create table if not exists MeasurementNames (
 create table if not exists Measurements (
     id integer primary key,
     Date text not null,
-    MeasurementId not null,
+    MetricId not null,
     Value not null,
-    constraint Measurements_FK foreign key (MeasurementId) references MeasurementNames (id)
+    constraint Measurements_FK foreign key (MetricId) references Metrics (id)
 );

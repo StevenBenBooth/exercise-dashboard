@@ -1,4 +1,4 @@
-drop table if exists MeasurementNames;
+drop table if exists Metrics;
 drop table if exists Measurements;
 drop table if exists MuscleExerciseMap;
 drop table if exists MuscleGroupMap;
