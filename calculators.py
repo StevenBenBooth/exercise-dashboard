@@ -1,19 +1,10 @@
 from pint import UnitRegistry
+import numpy as np
 
 ureg = UnitRegistry()
 Q_ = ureg.Quantity
 
-
-# https://en.wikipedia.org/wiki/One-repetition_maximum#Estimating_1RM
-def calculate_orm(weight, reps, style="brzycki"):
-    """Computes the estimated one-rep maximum of an exercise based on a set"""
-    if style == "brzycki":
-        return weight * 36 / (37 - reps)
-    elif style == "epley":
-        return weight * (1 + reps / 30)
-    raise ValueError(f"{style} one-rep max. formula is not implemented")
-
-
+# custom data
 wilkes_coefficients = {
     "male": [
         47.46178854,
@@ -34,9 +25,19 @@ wilkes_coefficients = {
 }
 
 
+# https://en.wikipedia.org/wiki/One-repetition_maximum#Estimating_1RM
+def calculate_orm(weight, reps, style="brzycki"):
+    """Computes the estimated one-rep maximum of an exercise based on a set"""
+    if style == "brzycki":
+        return np.divide(weight * 36, 37 - reps)
+    elif style == "epley":
+        return weight * (1 + reps / 30)
+    raise ValueError(f"{style} one-rep max. formula is not implemented")
+
+
 # https://en.wikipedia.org/wiki/Wilks_coefficient
 # TODO: remove default sex value if released
-def calculate_wilks_coeff(bw, lift, sex="male"):
+def calculate_wilks_score(bw, lift, sex="male"):
     """Computes an athlete's Wilks score, using the 2020 formulation
     Returns the adjusted lift weight in the units it was inputted as"""
     try:
@@ -52,3 +53,6 @@ def calculate_wilks_coeff(bw, lift, sex="male"):
 
     coeff = 600 / (a + b * bw + c * bw**2 + d * bw**3 + e * bw**4 + f * bw**5)
     return Q_(coeff * lift, original_units)
+
+
+# https://www.youtube.com/watch?v=LrDJXIQ_-eg
