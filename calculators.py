@@ -1,4 +1,5 @@
 from pint import UnitRegistry
+import numpy as np
 
 ureg = UnitRegistry()
 Q_ = ureg.Quantity
@@ -8,7 +9,7 @@ Q_ = ureg.Quantity
 def calculate_orm(weight, reps, style="brzycki"):
     """Computes the estimated one-rep maximum of an exercise based on a set"""
     if style == "brzycki":
-        return weight * 36 / (37 - reps)
+        return np.divide(weight * 36, 37 - reps)
     elif style == "epley":
         return weight * (1 + reps / 30)
     raise ValueError(f"{style} one-rep max. formula is not implemented")
@@ -36,7 +37,7 @@ wilkes_coefficients = {
 
 # https://en.wikipedia.org/wiki/Wilks_coefficient
 # TODO: remove default sex value if released
-def calculate_wilks_coeff(bw, lift, sex="male"):
+def calculate_wilks_score(bw, lift, sex="male"):
     """Computes an athlete's Wilks score, using the 2020 formulation
     Returns the adjusted lift weight in the units it was inputted as"""
     try:

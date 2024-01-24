@@ -20,7 +20,7 @@ create table if not exists Units (
 
 create table if not exists Workouts (
     id integer primary key,
-    Date string not null
+    Date text not null
 );
 
 create table if not exists MuscleGroups (
