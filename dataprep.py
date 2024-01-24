@@ -12,7 +12,12 @@ import numpy as np
 engine = sqlalchemy.create_engine("sqlite:///src/exercises.db")
 
 
-def get_exercise_series(exercise_id: int, agg_type="orm"):  # Union[List[int], int]
+def query_bw():
+    """Returns most recent bodyweight"""
+    raise NotImplementedError("Doesn't support Wilks yet.")
+
+
+def query_sets(exercise_id):
     # TODO: add support for plotting multiple exercises (if not here, then in plotting)
 
     # try:
@@ -21,7 +26,7 @@ def get_exercise_series(exercise_id: int, agg_type="orm"):  # Union[List[int], i
     #     exercise_ids = [exercise_ids]
 
     with engine.connect() as conn:
-        matching_sets = pd.read_sql(
+        res = pd.read_sql(
             sqlalchemy.text(
                 f"""select ExerciseSets.id as id, Exercises.Name as exercise, Workouts.Date as date, Units.Name as unit, ExerciseSets.Reps as reps, ExerciseSets.Weight as weight
                 from ExerciseSets 
@@ -33,7 +38,12 @@ def get_exercise_series(exercise_id: int, agg_type="orm"):  # Union[List[int], i
             conn,
             parse_dates=["date"],
         )
-        matching_sets.set_index("id", inplace=True)
+        res.set_index("id", inplace=True)
+    return res
+
+
+def get_exercise_series(exercise_id: int, agg_type="orm"):  # Union[List[int], int]
+    matching_sets = query_sets(exercise_id)
 
     # now we go through and merge each day into one event
     if agg_type == "orm":
@@ -51,16 +61,52 @@ def get_exercise_series(exercise_id: int, agg_type="orm"):  # Union[List[int], i
     return list(res.index), res.to_list()
 
 
-def get_powerlifting_series(agg_type=""):
+class EventDates:
+    def __init__(self) -> None:
+        self.dates = {}
+
+    def add(self, date, eventId):
+        try:
+            self.dates[date].append(eventId)
+        except KeyError:
+            self.dates[date] = [eventId]
+
+    def get_events(self, date):
+        try:
+            return self.dates[date]
+        except KeyError:
+            return []
+
+    def date_bounds(self):
+        sorted_dates = sorted(self.dates.keys())
+        return sorted_dates[0], sorted_dates[-1]
+
+    def __repr__(self) -> str:
+        return f"{self.dates}\n"
+
+
+def get_powerlifting_series(agg_type="", lift_window=1):
+    """Lift window is how many months a set should count for when computing"""
     # first, pull lifts for the 3 exercises, and combine them into a "total lift" series
-    if agg_type == "total":
+    # I'm going to generate the list, then pull the best lift over the past time period for the calculation
+    series = [
+        get_exercise_series(1),
+        get_exercise_series(5),
+        get_exercise_series(16),
+    ]
+    # series = [deadlifts, bench, squats]
+    # maps dates to dictionaries containing valid large lifts for that date
+    date_map = {}
+    for xs, ys in series:
         pass
+    # for plotting, pick the latest early date and earliest late date
+    # or present, if earliest late date is in the future
+    total_series = []
+    if agg_type == "total":
+        return total_series
     elif agg_type == "wilkes":
-        # need to pull bodyweight
         pass
     else:
         raise NotImplementedError(
             "Currently only supports plotting totals and wilks score"
         )
-
-print(get_exercise_series(1, agg_type="volume"))
