@@ -95,6 +95,7 @@ def get_top_lift_series(exercise_id: int, window=30):
                 best_res[date].append(value)
             except KeyError:
                 best_res[date] = [value]
+    best_res = {k: v for k, v in best_res.items() if k <= pd.to_datetime("now")}
     # yucky
     return list(zip(*[(key, max(vals)) for key, vals in best_res.items()]))
 
@@ -110,10 +111,9 @@ def normalize_by_bw(exercise_series):
 
 def get_powerlifting_series(agg_type="raw", lift_window=30):
     """Lift window is how many days a set should count for when computing"""
-    # first, pull lifts for the 3 exercises, and combine them into a "total lift" series
-    # I'm going to generate the list, then pull the best lift over the past time period for the calculation
+    # TODO: standardize output type
 
-    # series = [deadlifts, bench, squats]
+    # lift ids correspond to [deadlifts, bench, squats]
     best_lifts = [get_top_lift_series(lift_id, lift_window) for lift_id in (1, 5, 16)]
 
     if agg_type == "raw":
