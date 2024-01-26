@@ -126,7 +126,9 @@ with engine.connect() as conn:
     for metric in metrics:
         metric_ids[metric] = add_metric(conn, metric).inserted_primary_key[0]
 
-    add_measurement(conn, "09/01/2023", metric_ids["body weight"], 140)
+    add_measurement(conn, "09/01/2022", metric_ids["body weight"], 140)
+    add_measurement(conn, "01/01/2024", metric_ids["body weight"], 139)
+
 ######################### more advanced d3ata ######################
 
 exercise_info_df = pd.read_csv(

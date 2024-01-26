@@ -37,6 +37,7 @@ def calculate_orm(weight, reps, style="brzycki"):
 
 # https://en.wikipedia.org/wiki/Wilks_coefficient
 # TODO: remove default sex value if released
+# TODO: refactor to work on numpy arrays or pandas series
 def calculate_wilks_score(bw, lift, sex="male"):
     """Computes an athlete's Wilks score, using the 2020 formulation
     Returns the adjusted lift weight in the units it was inputted as"""
@@ -56,3 +57,5 @@ def calculate_wilks_score(bw, lift, sex="male"):
 
 
 # https://www.youtube.com/watch?v=LrDJXIQ_-eg
+# TODO: implement proportion conversion to strength standards as per video
+# would be nice on a little dash, not so much for plotting
