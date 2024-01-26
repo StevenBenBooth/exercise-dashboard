@@ -1,32 +1,49 @@
-# I'm not sure what the best way to do this sort of thing is, but I think the
-# most extensible will be to decouple the plotting from the backend data generation
-
-# If I can do that, then all of the tasks will use the same plotting methods, which
-# will be very nice
 import pandas as pd
 from calculators import calculate_orm, calculate_wilks_score
 import sqlalchemy
-from typing import Union, List
 import numpy as np
+from pint import UnitRegistry
+
+ureg = UnitRegistry()
+Q_ = ureg.Quantity
 
 engine = sqlalchemy.create_engine("sqlite:///src/exercises.db")
 
 
-def query_bw():
-    """Returns most recent bodyweight"""
-    raise NotImplementedError("Doesn't support Wilks yet.")
+def query_bw(date):
+    """Returns most recent bodyweight before `date`"""
+
+    # Unfortunates, SQLite doesn't play so nice with dates, so I couldn't select in the query
+    with engine.connect() as conn:
+        df = pd.read_sql(
+            sqlalchemy.text(
+                f"""select Measurements.Date as dt, Measurements.Value as weight
+                    from Measurements 
+                    where Measurements.MetricId = 1"""
+            ),
+            conn,
+        )
+    df["dt"] = pd.to_datetime(df["dt"], format="%Y-%m-%d %H:%M:%S")
+    df = df[df["dt"] < pd.to_datetime(date)]
+    df.set_index("dt", inplace=True)
+    assert len(df) > 0, f"No bodyweight recorded before {date}"
+    df.sort_index(inplace=True)
+    return list(df.tail(1).weight)[0]
+
+
+query_bw("01/01/2024")
 
 
 def query_sets(exercise_id):
     # TODO: add support for plotting multiple exercises (if not here, then in plotting)
-
+    # TODO: implement using support for units. There is a pint-pandas, but it seems to still be in development
     # try:
     #     iter(exercise_ids)
     # except TypeError:
     #     exercise_ids = [exercise_ids]
 
     with engine.connect() as conn:
-        res = pd.read_sql(
+        df = pd.read_sql(
             sqlalchemy.text(
                 f"""select ExerciseSets.id as id, Exercises.Name as exercise, Workouts.Date as date, Units.Name as unit, ExerciseSets.Reps as reps, ExerciseSets.Weight as weight
                 from ExerciseSets 
@@ -38,8 +55,8 @@ def query_sets(exercise_id):
             conn,
             parse_dates=["date"],
         )
-        res.set_index("id", inplace=True)
-    return res
+        df.set_index("id", inplace=True)
+    return df
 
 
 def get_exercise_series(exercise_id: int, agg_type="orm"):  # Union[List[int], int]
@@ -58,55 +75,70 @@ def get_exercise_series(exercise_id: int, agg_type="orm"):  # Union[List[int], i
         raise NotImplementedError(
             "Currently only supports plotting orm and volume for exercises"
         )
-    return list(res.index), res.to_list()
+    return list(res.index), list(res)
 
 
-class EventDates:
-    def __init__(self) -> None:
-        self.dates = {}
-
-    def add(self, date, eventId):
-        try:
-            self.dates[date].append(eventId)
-        except KeyError:
-            self.dates[date] = [eventId]
-
-    def get_events(self, date):
-        try:
-            return self.dates[date]
-        except KeyError:
-            return []
-
-    def date_bounds(self):
-        sorted_dates = sorted(self.dates.keys())
-        return sorted_dates[0], sorted_dates[-1]
-
-    def __repr__(self) -> str:
-        return f"{self.dates}\n"
+# TODO: refactor all of this to try to use dataframes for as long as possible. All the looping and casting is awkward and inefficient
+# Putting all the awkward conversions into the other modules would streamline this
 
 
-def get_powerlifting_series(agg_type="", lift_window=1):
-    """Lift window is how many months a set should count for when computing"""
-    # first, pull lifts for the 3 exercises, and combine them into a "total lift" series
-    # I'm going to generate the list, then pull the best lift over the past time period for the calculation
-    series = [
-        get_exercise_series(1),
-        get_exercise_series(5),
-        get_exercise_series(16),
-    ]
-    # series = [deadlifts, bench, squats]
-    # maps dates to dictionaries containing valid large lifts for that date
-    date_map = {}
-    for xs, ys in series:
-        pass
-    # for plotting, pick the latest early date and earliest late date
-    # or present, if earliest late date is in the future
-    total_series = []
+def get_top_lift_series(exercise_id: int, window=30):
+    """returns a series of the best ORMs for `exercise_id`, where each lift is valid for `window` days"""
+    start_dates, orms = get_exercise_series(exercise_id)
+    best_res = {}
+    # TODO: This is heinously inefficient. Refactor
+    for start_date, value in zip(start_dates, orms):
+        for date in pd.date_range(
+            start_date, start_date + pd.Timedelta(window, unit="D")
+        ):
+            try:
+                best_res[date].append(value)
+            except KeyError:
+                best_res[date] = [value]
+    best_res = {k: v for k, v in best_res.items() if k <= pd.to_datetime("now")}
+    # yucky
+    return list(zip(*[(key, max(vals)) for key, vals in best_res.items()]))
+
+
+def normalize_by_bw(exercise_series):
+    # TODO: refactor with two pointer implementation for efficiency
+    # directly returning bw dates would be much more efficient
+    xs, ys = exercise_series
+
+    # eww to performance and style
+    return list(zip(*[(x, y / query_bw(x)) for x, y in zip(xs, ys)]))
+
+
+def get_powerlifting_series(agg_type="raw", lift_window=30):
+    """Lift window is how many days a set should count for when computing"""
+    # TODO: standardize output type
+
+    # lift ids correspond to [deadlifts, bench, squats]
+    best_lifts = [get_top_lift_series(lift_id, lift_window) for lift_id in (1, 5, 16)]
+
+    if agg_type == "raw":
+        return best_lifts
+
+    if agg_type == "proportions":
+        return [normalize_by_bw(series) for series in best_lifts]
+
+    vals = {}
+    for lst in best_lifts:
+        for date, weight in zip(*lst):
+            try:
+                vals[date].append(weight)
+            except KeyError:
+                vals[date] = [weight]
+
+    totals = [(date, sum(trio)) for date, trio in vals.items() if len(trio) == 3]
+    dates, tots = list(zip(*totals))
     if agg_type == "total":
-        return total_series
+        return dates, tots
+
     elif agg_type == "wilkes":
-        pass
-    else:
-        raise NotImplementedError(
-            "Currently only supports plotting totals and wilks score"
-        )
+        return dates, [
+            calculate_wilks_score(query_bw(date), lift)
+            for date, lift in zip(dates, tots)
+        ]
+
+    raise NotImplementedError(f"Does not support {agg_type} for plotting")
