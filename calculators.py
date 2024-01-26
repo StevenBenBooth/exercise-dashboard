@@ -40,20 +40,19 @@ def calculate_orm(weight, reps, style="brzycki"):
 # TODO: refactor to work on numpy arrays or pandas series
 def calculate_wilks_score(bw, lift, sex="male"):
     """Computes an athlete's Wilks score, using the 2020 formulation
-    Returns the adjusted lift weight in the units it was inputted as"""
+    Assumes weights are in pounds"""
+    # TODO: create a basic unit system
     try:
         a, b, c, d, e, f = wilkes_coefficients[sex]
     except KeyError:
         raise ValueError(
             "Currently, only male and female sexes are supported. I'm not sure if there are coefficients for intersex athletes."
         )
-    # TODO: explicitly check that bw is a quantity
-    original_units = bw.units
-    bw = Q_(bw, "kg")
-    lift = Q_(bw, "kg")
+    bw *= 0.45359237
+    lift *= 0.45359237
 
     coeff = 600 / (a + b * bw + c * bw**2 + d * bw**3 + e * bw**4 + f * bw**5)
-    return Q_(coeff * lift, original_units)
+    return coeff * lift
 
 
 # https://www.youtube.com/watch?v=LrDJXIQ_-eg

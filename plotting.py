@@ -36,3 +36,4 @@ for x_series, y_series in series:
     ax.plot(x_series, y_series, color=next(palette), label=next(series_labels))
 ax.legend(loc="upper right")
 plt.show()
+

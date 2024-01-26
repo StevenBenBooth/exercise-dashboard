@@ -2,7 +2,10 @@ import pandas as pd
 from calculators import calculate_orm, calculate_wilks_score
 import sqlalchemy
 import numpy as np
-import pint
+from pint import UnitRegistry
+
+ureg = UnitRegistry()
+Q_ = ureg.Quantity
 
 engine = sqlalchemy.create_engine("sqlite:///src/exercises.db")
 
@@ -20,10 +23,15 @@ def query_bw(date):
             ),
             conn,
         )
-    dates = pd.to_datetime(df["dt"], format="%Y-%m-%d %H:%M:%S")
-    dates = dates[dates < pd.to_datetime(date)]
-    assert len(dates) > 0, f"No bodyweight recorded before {date}"
-    return sorted(dates, reverse=True)[0]
+    df["dt"] = pd.to_datetime(df["dt"], format="%Y-%m-%d %H:%M:%S")
+    df = df[df["dt"] < pd.to_datetime(date)]
+    df.set_index("dt", inplace=True)
+    assert len(df) > 0, f"No bodyweight recorded before {date}"
+    df.sort_index(inplace=True)
+    return list(df.tail(1).weight)[0]
+
+
+query_bw("01/01/2024")
 
 
 def query_sets(exercise_id):
@@ -71,6 +79,7 @@ def get_exercise_series(exercise_id: int, agg_type="orm"):  # Union[List[int], i
 
 
 # TODO: refactor all of this to try to use dataframes for as long as possible. All the looping and casting is awkward and inefficient
+# Putting all the awkward conversions into the other modules would streamline this
 
 
 def get_top_lift_series(exercise_id: int, window=30):
@@ -87,7 +96,7 @@ def get_top_lift_series(exercise_id: int, window=30):
             except KeyError:
                 best_res[date] = [value]
     # yucky
-    return tuple(zip(*[(key, max(vals)) for key, vals in best_res.items()]))
+    return list(zip(*[(key, max(vals)) for key, vals in best_res.items()]))
 
 
 def normalize_by_bw(exercise_series):
@@ -96,20 +105,16 @@ def normalize_by_bw(exercise_series):
     xs, ys = exercise_series
 
     # eww to performance and style
-    return tuple(zip(*[(x, y / query_bw(x)) for x, y in zip(xs, ys)]))
+    return list(zip(*[(x, y / query_bw(x)) for x, y in zip(xs, ys)]))
 
 
-def get_powerlifting_series(agg_type="", lift_window=30):
+def get_powerlifting_series(agg_type="raw", lift_window=30):
     """Lift window is how many days a set should count for when computing"""
     # first, pull lifts for the 3 exercises, and combine them into a "total lift" series
     # I'm going to generate the list, then pull the best lift over the past time period for the calculation
-    lifts = [
-        get_exercise_series(1),
-        get_exercise_series(5),
-        get_exercise_series(16),
-    ]
+
     # series = [deadlifts, bench, squats]
-    best_lifts = [get_top_lift_series(lift) for lift in lifts]
+    best_lifts = [get_top_lift_series(lift_id, lift_window) for lift_id in (1, 5, 16)]
 
     if agg_type == "raw":
         return best_lifts
@@ -117,8 +122,6 @@ def get_powerlifting_series(agg_type="", lift_window=30):
     if agg_type == "proportions":
         return [normalize_by_bw(series) for series in best_lifts]
 
-    # if these were series, it could be more efficient.
-    # TODO: make plotting handle series correctly, so it's not in the prep stage
     vals = {}
     for lst in best_lifts:
         for date, weight in zip(*lst):
@@ -127,14 +130,15 @@ def get_powerlifting_series(agg_type="", lift_window=30):
             except KeyError:
                 vals[date] = [weight]
 
-    totals = [(date, sum(trio)) for date, trio in lst if len(trio) == 3]
+    totals = [(date, sum(trio)) for date, trio in vals.items() if len(trio) == 3]
     dates, tots = list(zip(*totals))
     if agg_type == "total":
         return dates, tots
 
     elif agg_type == "wilkes":
-        pass
-    else:
-        raise NotImplementedError(
-            "Currently only supports plotting totals, proportions, and wilkes score"
-        )
+        return dates, [
+            calculate_wilks_score(query_bw(date), lift)
+            for date, lift in zip(dates, tots)
+        ]
+
+    raise NotImplementedError(f"Does not support {agg_type} for plotting")
