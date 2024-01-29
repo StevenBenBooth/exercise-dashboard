@@ -35,7 +35,7 @@ def plot_multiple(ax, series, labels_iter):
     top = -1
     for x_series, y_series in series:
         top = max(max(y_series), top)
-        ax.scatter(x_series, y_series, color=next(palette), label=next(labels_iter))
+        ax.plot(x_series, y_series, color=next(palette), label=next(labels_iter))
     ax.legend(loc="upper right")
     ax.set_ylim(bottom=0, top=top * 1.5)
 
