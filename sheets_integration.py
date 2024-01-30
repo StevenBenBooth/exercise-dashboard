@@ -1,6 +1,5 @@
 import gspread
 import pandas as pd
-from zoneinfo import ZoneInfo
 from datetime import datetime
 from oauth2client.service_account import ServiceAccountCredentials
 
@@ -9,23 +8,31 @@ MY_TZ = "US/Eastern"
 
 # Based on https://www.twilio.com/en-us/blog/an-easy-way-to-read-and-write-to-a-google-spreadsheet-in-python-html
 
-# use creds to create a client to interact with the Google Drive API
-scope = [
-    "https://spreadsheets.google.com/feeds",
-    "https://www.googleapis.com/auth/drive",
-]
-creds = ServiceAccountCredentials.from_json_keyfile_name(
-    "src/exercise-tracker-412701-9b453b6dc305.json", scope
-)
-client = gspread.authorize(creds)
-# Find a workbook by name and open the first sheet
-# Make sure you use the right name here.
-sheet = client.open("Exercises").sheet1
+
+def add_recent_data():
+    # use creds to create a client to interact with the Google Drive API
+    scope = [
+        "https://spreadsheets.google.com/feeds",
+        "https://www.googleapis.com/auth/drive",
+    ]
+    creds = ServiceAccountCredentials.from_json_keyfile_name(
+        "src/exercise-tracker-412701-9b453b6dc305.json", scope
+    )
+    client = gspread.authorize(creds)
+    # Find a workbook by name and open the first sheet
+    # Make sure you use the right name here.
+    sheet = client.open("Exercises").sheet1
+
+    df = get_records(sheet)
+    last_run = cache_time()
+
+
+# TODO: add time gap as a condition for splitting new input data into workouts
 
 
 def get_records(sheet):
     """Converts the sheet info into a dataframe which matches the expected input
-    for"""
+    for the database"""
     # Extract and print all of the values
     records = sheet.get_all_records()
 
@@ -36,11 +43,12 @@ def get_records(sheet):
         ["Weight", "Reps", "Number of sets"]
     ].apply(pd.to_numeric)
     print(df)
-    df.set_index("Timestamp", inplace=True)
-    df.index = df.index.tz_localize(GOOGLE_TZ).tz_convert(MY_TZ)
+    df["Timestamp"] = df["Timestamp"].tz_localize(GOOGLE_TZ).tz_convert(MY_TZ)
     df.fillna({"Number of sets": 1}, inplace=True)
     # For some reason it uses floats for the sets column
     df["Number of sets"] = pd.to_numeric(df["Number of sets"], downcast="integer")
+
+    # Add rows based on the number of sets
     return df
 
 
@@ -52,6 +60,3 @@ def cache_time():
         current_time = datetime.now().astimezone()
         f.write(str(current_time))
     return last_time
-
-
-print(get_records(sheet))
