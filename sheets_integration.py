@@ -1,5 +1,6 @@
 import gspread
 import pandas as pd
+import numpy as np
 from datetime import datetime
 from oauth2client.service_account import ServiceAccountCredentials
 
@@ -31,8 +32,7 @@ def add_recent_data():
 
 
 def get_records(sheet):
-    """Converts the sheet info into a dataframe which matches the expected input
-    for the database"""
+    """Converts the sheet info into a dataframe to be consumed"""
     # Extract and print all of the values
     records = sheet.get_all_records()
 
@@ -42,14 +42,21 @@ def get_records(sheet):
     df[["Weight", "Reps", "Number of sets"]] = df[
         ["Weight", "Reps", "Number of sets"]
     ].apply(pd.to_numeric)
-    print(df)
-    df["Timestamp"] = df["Timestamp"].tz_localize(GOOGLE_TZ).tz_convert(MY_TZ)
+    df.set_index("Timestamp", inplace=True, drop=False)
+    df.index = df.index.tz_localize(GOOGLE_TZ).tz_convert(MY_TZ)
     df.fillna({"Number of sets": 1}, inplace=True)
+    # df["Timestamp"] = df.index
+    # df.reindex()
     # For some reason it uses floats for the sets column
     df["Number of sets"] = pd.to_numeric(df["Number of sets"], downcast="integer")
-
-    # Add rows based on the number of sets
-    return df
+    new_df = pd.DataFrame(
+        np.repeat(df.values, df["Number of sets"], axis=0),
+        columns=["Timestamp", "exercise names", "weight", "reps", "Number of sets"],
+    )
+    new_df.set_index("Timestamp", inplace=True)
+    new_df.drop(columns=["Number of sets"], inplace=True)
+    print(new_df)
+    return new_df
 
 
 def cache_time():
@@ -60,3 +67,6 @@ def cache_time():
         current_time = datetime.now().astimezone()
         f.write(str(current_time))
     return last_time
+
+
+add_recent_data()
