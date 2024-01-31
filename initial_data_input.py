@@ -38,23 +38,23 @@ with engine.connect() as conn:
 
     for _, row in exercise_info_df.iterrows():
         name, value_type, per_side_ind, bodyweight_ind, assisted_ind = row
-        id = add_exercise(
+        add_exercise(
             conn,
             name,
             value_ids[value_type],
             bodyweight_ind,
             per_side_ind,
             assisted_ind,
-        ).inserted_primary_key[0]
+        )
 
 
 workout_df = pd.read_csv(
     "src/initialdata.csv", names=["Date", "exercise name", "value", "reps"]
 )
+workout_df["Date"] = pd.to_datetime(workout_df["Date"]).map(lambda x: x.date())
 
-# we need to group by date (since I have only been doing one workout per day)
-# then, I'll add a workout for each day, save the workout id, and use that to fill out
-# the exercise sets associated with that id
+# TODO: refactor with add_workout implementation
+
 with engine.connect() as conn:
     exercise_ids = get_synthetic_keymaps(conn, ["Exercises"])
 

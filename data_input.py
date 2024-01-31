@@ -54,8 +54,14 @@ def exercise_stmt(name, value_id, body_weight, per_side, assisted):
     )
 
 
-def workout_stmt(dt):
-    return sa.insert(Workouts).values(Date=datetime.strptime(dt, "%m/%d/%Y"))
+def workout_stmt(dt, format="%m/%d/%Y"):
+    """If passing in a string, format must be correctly specified"""
+    try:
+        dt = datetime.strptime(dt, format)
+    except TypeError:
+        pass
+    # throws a ValueError if the format doesn't match
+    return sa.insert(Workouts).values(Date=dt)
 
 
 def set_stmt(workout_id, exercise_id, reps, value, unit_id):
@@ -73,9 +79,12 @@ def metric_stmt(name):
 
 
 def measurement_stmt(dt, metric_id, value):
-    return sa.insert(Measurements).values(
-        Date=datetime.strptime(dt, "%m/%d/%Y"), Value=value, MetricId=metric_id
-    )
+    """If passing in a string, format must be correctly specified"""
+    try:
+        dt = datetime.strptime(dt, format)
+    except TypeError:
+        pass
+    return sa.insert(Measurements).values(Date=dt, Value=value, MetricId=metric_id)
 
 
 def muscle_stmt():
@@ -124,5 +133,18 @@ def get_synthetic_keymaps(conn, db_names):
     return result_maps
 
 
-def create_workout():
-    raise NotImplementedError("Blahh")
+def create_workout(date, data_dict):
+    with engine.connect() as conn:
+        unit_ids, exercise_ids = get_synthetic_keymaps(conn, ["Units", "Exercises"])
+        workout_id = add_workout(conn, date).inserted_primary_key[0]
+
+        for entry in data_dict:
+            add_set(
+                conn,
+                workout_id,
+                exercise_ids[entry["exercise name"]],
+                entry["reps"],
+                entry["value"],
+                unit_ids["lb"],
+            )
+    # TODO: Figure out what the support is for sqlalchemy with compound primary keys (relevant once I start looking into muscle/group mappings)
