@@ -2,10 +2,6 @@ import pandas as pd
 from calculators import calculate_orm, calculate_wilks_score
 import sqlalchemy
 import numpy as np
-from pint import UnitRegistry
-
-ureg = UnitRegistry()
-Q_ = ureg.Quantity
 
 engine = sqlalchemy.create_engine("sqlite:///src/exercises.db")
 
@@ -57,6 +53,10 @@ def query_sets(exercise_id):
         )
         df.set_index("id", inplace=True)
     return df
+
+
+# TODO: double volume for exercises which are "per side"
+# TODO: don't do orm calculations or "bw prop" for exercises that don't actually use weight (e.g. plank)
 
 
 def get_exercise_series(exercise_id: int, agg_type="orm"):  # Union[List[int], int]
@@ -114,6 +114,7 @@ def get_powerlifting_series(agg_type="raw", lift_window=30):
     # TODO: standardize output type
 
     # lift ids correspond to [deadlifts, bench, squats]
+    # TODO: programmatically get ids for deadlift, bench, squat
     best_lifts = [get_top_lift_series(lift_id, lift_window) for lift_id in (1, 5, 16)]
 
     if agg_type == "raw":

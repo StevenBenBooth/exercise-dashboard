@@ -3,7 +3,7 @@ import seaborn as sns
 import numpy as np
 import matplotlib.pyplot as plt
 
-from dataprep import get_exercise_series, get_powerlifting_series
+from plot_support import get_exercise_series, get_powerlifting_series
 
 # TODO: improve specs for functions
 
