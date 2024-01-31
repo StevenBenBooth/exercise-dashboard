@@ -40,21 +40,18 @@ def plot_multiple(ax, series, labels_iter):
     ax.set_ylim(bottom=0, top=top * 1.5)
 
 
-# fig, ax = plt.subplots()
-# a_type = "orm"
-# indices = [1, 5, 16, 10]
-# series = [get_exercise_series(i, agg_type=a_type) for i in indices]
-# series_labels = iter(["deadlifts", "bench press", "squats", "cable rows"])
+fig, ax = plt.subplots()
+a_type = "orm"
+indices = [1, 5, 16, 10]
+series = [get_exercise_series(i, agg_type=a_type) for i in indices]
+series_labels = iter(["deadlifts", "bench press", "squats", "cable rows"])
 
-# plot_multiple(ax, series, series_labels)
-# plt.show()
+plot_multiple(ax, series, series_labels)
+plt.show()
 
 fig, ax = plt.subplots()
 series = get_powerlifting_series(agg_type="proportions")
 series_labels = iter(["deadlifts", "bench press", "squats"])
 
-# series = get_powerlifting_series(agg_type="wilkes")
-# series_labels = iter(["total"])
-
-plot_multiple(ax, series, series_labels)
-plt.show()
+# plot_multiple(ax, series, series_labels)
+# plt.show()

@@ -19,7 +19,7 @@ def query_bw(date):
             ),
             conn,
         )
-    df["dt"] = pd.to_datetime(df["dt"], format="%Y-%m-%d %H:%M:%S")
+    df["dt"] = pd.to_datetime(df["dt"])
     df = df[df["dt"] < pd.to_datetime(date)]
     df.set_index("dt", inplace=True)
     assert len(df) > 0, f"No bodyweight recorded before {date}"
@@ -27,16 +27,9 @@ def query_bw(date):
     return list(df.tail(1).weight)[0]
 
 
-query_bw("01/01/2024")
-
-
 def query_sets(exercise_id):
     # TODO: add support for plotting multiple exercises (if not here, then in plotting)
     # TODO: implement using support for units. There is a pint-pandas, but it seems to still be in development
-    # try:
-    #     iter(exercise_ids)
-    # except TypeError:
-    #     exercise_ids = [exercise_ids]
 
     with engine.connect() as conn:
         df = pd.read_sql(
@@ -55,20 +48,16 @@ def query_sets(exercise_id):
     return df
 
 
-# TODO: double volume for exercises which are "per side"
-# TODO: don't do orm calculations or "bw prop" for exercises that don't actually use weight (e.g. plank)
-
-
 def get_exercise_series(exercise_id: int, agg_type="orm"):  # Union[List[int], int]
     matching_sets = query_sets(exercise_id)
-
-    # now we go through and merge each day into one event
     if agg_type == "orm":
+        # TODO: don't do orm calculations or "bw prop" for exercises that don't actually use weight (e.g. plank)
         matching_sets["orm"] = calculate_orm(
             matching_sets["weight"], matching_sets["reps"]
         )
         res = matching_sets.groupby("date")["orm"].aggregate(np.max)
     elif agg_type == "volume":
+        # TODO: double volume for exercises which are "per side"
         matching_sets["set volume"] = matching_sets["weight"] * matching_sets["reps"]
         res = matching_sets.groupby("date")["set volume"].aggregate(np.sum)
     else:
@@ -102,7 +91,7 @@ def get_top_lift_series(exercise_id: int, window=30):
 
 def normalize_by_bw(exercise_series):
     # TODO: refactor with two pointer implementation for efficiency
-    # directly returning bw dates would be much more efficient
+    # directly returning series of bw dates would be much more efficient
     xs, ys = exercise_series
 
     # eww to performance and style
